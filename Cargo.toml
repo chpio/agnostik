@@ -31,7 +31,7 @@ pin-project = "1.0.2"
 
 [dev-dependencies]
 agnostik = { path = ".", features = ["attributes"] }
-tokio_crate = { version = "0.3.4", features = ["time"], package = "tokio" }
+tokio_crate = { version = "0.3.4", features = ["time", "macros", "rt", "rt-multi-thread"], package = "tokio" }
 tokio1_crate = { version = "1", features = ["time"], package = "tokio" }
 
 [build-dependencies]

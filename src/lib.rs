@@ -54,28 +54,34 @@
 //! Agnostiks API is very easy and only has a few methods to use.
 //! Here's an example with the bastion-executor.
 //!
-//! ```ignore
+//! ```
 //! use agnostik::prelude::*;
 //!
+//! #[cfg(feature = "runtime_bastion")]
 //! fn main() {
 //!     let runtime = Agnostik::bastion();
 //!
 //!     let future = runtime.spawn(async {
 //!         println!("Hello from bastions executor!");
-//!     })
-//!     runtime.block_on(future)
+//!     });
+//!     runtime.block_on(future);
 //!
 //!     let future = runtime.spawn_blocking(|| {
 //!         expensive_blocking_method();
-//!     })
-//!     runtime.block_on(future)
+//!     });
+//!     runtime.block_on(future);
 //! }
+//!
+//! # fn expensive_blocking_method() {}
+//! #
+//! # #[cfg(not(feature = "runtime_bastion"))]
+//! # fn main() {}
 //! ```
 //!
 //! There's also a global executor instance that can be used to spawn futures
 //! without creating and storing your own executor.
 //!
-//! ```ignore
+//! ```
 //! fn main() {
 //!     let result = agnostik::block_on(async {
 //!         agnostik::spawn(async {
@@ -116,36 +122,51 @@
 //!
 //! Here's how to fix it:
 //!
-//! ```ignore
+//! ```should_panic
 //! use agnostik::prelude::*;
+//! # #[cfg(feature = "runtime_tokio")]
+//! # use tokio_crate as tokio;
+//! # #[cfg(feature = "runtime_tokio")]
+//! use tokio::runtime::Runtime;
 //!
+//! # #[cfg(feature = "runtime_tokio")]
 //! #[tokio::main]
 //! async fn main() {
 //!     let runtime = Agnostik::tokio();
 //!
-//!     let result = runtime.spawn(async_task()).await;
+//!     let result = runtime.spawn(async { 1337 }).await;
 //!
-//!     println!("The result is {}", result)
+//!     assert_eq!(result, 1337);
 //! }
+//!
+//! # #[cfg(not(feature = "runtime_tokio"))]
+//! # fn main() { unimplemented!() }
 //! ```
 //!
 //! This would fail with a panic.
 //! How to do it correctly:
 //!
-//! ```ignore
+//! ```
 //! use agnostik::prelude::*;
+//! # #[cfg(feature = "runtime_tokio")]
+//! # use tokio_crate as tokio;
+//! # #[cfg(feature = "runtime_tokio")]
 //! use tokio::runtime::Runtime;
 //!
+//! # #[cfg(feature = "runtime_tokio")]
 //! fn main() {
 //!     // see tokio docs for more methods to create a runtime
 //!     let runtime = Runtime::new().expect("Failed to create a runtime"); // 1
 //!     let runtime = Agnostik::tokio_with_runtime(runtime); // 2
 //!
-//!     let result = runtime.spawn(async_task());
+//!     let result = runtime.spawn(async { 1337 });
 //!     let result = runtime.block_on(result);
 //!
-//!     println!("The result is {}", result)
+//!     assert_eq!(result, 1337);
 //! }
+//!
+//! # #[cfg(not(feature = "runtime_tokio"))]
+//! # fn main() {}
 //! ```
 //!
 //! You can replace 1 and 2 with `Agnostik::tokio()`, because this method call will
