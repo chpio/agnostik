@@ -14,6 +14,7 @@ mod tokio_tests {
                     i += 1;
                 }
             })
+            .await
         });
     }
 
@@ -22,26 +23,27 @@ mod tokio_tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let rt = std::sync::Arc::new(rt);
 
-        for _ in 0..100 {
+        for _ in 0..2 {
             let rt = rt.clone();
             std::thread::spawn(move || {
                 rt.block_on(
                     async move { tokio::time::sleep(std::time::Duration::from_secs(1)).await },
                 );
-            });
+            })
+            .join()
+            .unwrap();
         }
     }
-}
 
-#[cfg(feature = "runtime_tokio1")]
-#[test]
-fn test_tokio_implicit() {
-    let res = agnostik::block_on(async {
-        agnostik::spawn(async {
-            println!("hello world");
-            1
-        })
-        .await
-    });
-    assert_eq!(res, 1);
+    #[test]
+    fn test_tokio_implicit() {
+        let res = agnostik::block_on(async {
+            agnostik::spawn(async {
+                println!("hello world");
+                1
+            })
+            .await
+        });
+        assert_eq!(res, 1);
+    }
 }

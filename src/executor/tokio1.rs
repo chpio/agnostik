@@ -1,12 +1,12 @@
 use crate::join_handle::{InnerJoinHandle, JoinHandle};
 use crate::{AgnostikExecutor, LocalAgnostikExecutor};
 use std::future::Future;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tokio1_crate as tokio;
 
 /// A wrapper around the `tokio` (version 1.*) crate which implements `AgnostikExecutor` and
 /// `LocalAgnostikExecutor`.
-pub struct Tokio1Executor(Mutex<tokio::runtime::Runtime>);
+pub struct Tokio1Executor(Mutex<Arc<tokio::runtime::Runtime>>);
 
 impl Tokio1Executor {
     /// Create a new `Tokio1Executor`.
@@ -16,12 +16,12 @@ impl Tokio1Executor {
 
     /// Create a new `TokioExecutor` with a custom runtime.
     pub fn with_runtime(runtime: tokio::runtime::Runtime) -> Self {
-        Tokio1Executor(Mutex::new(runtime))
+        Tokio1Executor(Mutex::new(Arc::new(runtime)))
     }
 
     pub(crate) fn set_runtime(&self, runtime: tokio::runtime::Runtime) {
         let mut inner = self.0.lock().unwrap();
-        *inner = runtime;
+        *inner = Arc::new(runtime);
     }
 }
 
@@ -31,7 +31,8 @@ impl AgnostikExecutor for Tokio1Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        let handle = tokio::task::spawn(future);
+        let rt = self.0.lock().unwrap().clone();
+        let handle = rt.spawn(future);
         JoinHandle(InnerJoinHandle::Tokio1(handle))
     }
 
@@ -40,7 +41,8 @@ impl AgnostikExecutor for Tokio1Executor {
         F: FnOnce() -> T + Send + 'static,
         T: Send + 'static,
     {
-        let handle = tokio::task::spawn_blocking(task);
+        let rt = self.0.lock().unwrap().clone();
+        let handle = rt.spawn_blocking(task);
         JoinHandle(InnerJoinHandle::Tokio1(handle))
     }
 
@@ -49,7 +51,8 @@ impl AgnostikExecutor for Tokio1Executor {
         F: Future + Send + 'static,
         F::Output: Send + 'static,
     {
-        self.0.lock().unwrap().block_on(future)
+        let rt = self.0.lock().unwrap().clone();
+        rt.block_on(future)
     }
 }
 
@@ -59,6 +62,7 @@ impl LocalAgnostikExecutor for Tokio1Executor {
         F: Future + 'static,
         F::Output: 'static,
     {
+        // TODO: use our `Runtime` somehow?
         let handle = tokio::task::spawn_local(future);
         JoinHandle(InnerJoinHandle::Tokio1(handle))
     }
